@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Church Threat & Incident Monitor</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#22c55e',
+              800: '#166534',
+              900: '#14532d',
+            },
+            tactical: {
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.8);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 1);
+    }
+    
+    .no-scroll {
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-tactical-950 text-slate-100 antialiased min-h-screen flex flex-col justify-between pb-20 sm:pb-6">
+
+  <header class="sticky top-0 z-30 bg-tactical-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 shadow-md">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-9 h-9 rounded-lg bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500">
+          <i class="fa-solid font-bold fa-shield-cat text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-sm font-bold tracking-tight text-white leading-tight">Church Security Monitor</h1>
+          <p class="text-[10px] text-slate-400 font-medium">Incident & Threat Intelligence</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <button id="user-badge-btn" onclick="toggleAuthModal()" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 rounded-full text-xs transition" title="Account Details">
+          <span id="user-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="header-user-name" class="font-medium text-slate-200">John D.</span>
+          <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+        </button>
+        <button id="logout-btn" onclick="handleLogout()" class="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1" title="Sign Out">
+          <i class="fa-solid fa-right-from-bracket text-xs"></i>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto w-full px-3 py-4 space-y-4 flex-grow">
+    
+    <!-- RSS Threat Intel Feed -->
+    <section class="bg-tactical-900 border border-slate-800 rounded-xl p-3.5 shadow-lg">
+      <div class="flex items-center justify-between pb-2 cursor-pointer select-none" onclick="toggleRssFeed()">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-rss text-orange-500 text-sm"></i>
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">Threat Intel Feed</h2>
+          <span id="rss-count-pill" class="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[9px] px-1.5 py-0.5 rounded-full font-bold hidden">4 items</span>
+        </div>
+        <div class="flex items-center space-x-2" onclick="event.stopPropagation()">
+          <span id="rss-sync-status" class="text-[10px] text-slate-400 hidden sm:inline">Synced 12h ago</span>
+          <button id="rss-refresh-btn" onclick="refreshRssFeed(event)" title="Refresh Threat Intel Feed" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2.5 py-1 rounded-md text-[10px] font-semibold transition active:scale-95">
+            <i id="rss-refresh-icon" class="fa-solid fa-arrows-rotate text-[10px] text-emerald-400"></i>
+            <span>Refresh</span>
+          </button>
+          <button id="rss-toggle-btn" onclick="toggleRssFeed()" aria-label="Toggle Threat Intel Feed" class="text-slate-400 hover:text-white transition-colors p-1">
+            <i id="rss-toggle-icon" class="fa-solid fa-chevron-up text-xs transition-transform duration-200"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="rss-feed-body" class="pt-2 border-t border-slate-800 space-y-2.5">
+        <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          <button id="rss-filter-all" onclick="filterRss('all')" class="rss-filter-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-600 text-white shadow-sm transition">
+            USA All
+          </button>
+          <button id="rss-filter-ga" onclick="filterRss('GA')" class="rss-filter-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition">
+            Georgia (GA)
+          </button>
+          <button id="rss-filter-sc" onclick="filterRss('SC')" class="rss-filter-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition">
+            S. Carolina (SC)
+          </button>
+        </div>
+
+        <div id="rss-feed-container" class="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+          <!-- Dynamic Feed Items Inserted Here -->
+        </div>
+
+        <div class="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+          <span>Source: intel.christianwarriortraining.com</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin Approval & User Management Panel -->
+    <section id="admin-approval-panel" class="hidden bg-slate-900/90 border border-purple-500/30 rounded-xl p-3 shadow-lg space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+          <h3 class="text-xs font-bold text-purple-300 uppercase tracking-wider">Admin Control Panel</h3>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <span id="pending-count-badge" class="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold">0 Requests</span>
+          <button onclick="openAdminUsersModal()" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2.5 py-1 rounded-md font-semibold transition flex items-center space-x-1 shadow-sm">
+            <i class="fa-solid fa-users-gear text-[10px]"></i>
+            <span>User Management</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="pending-users-list" class="space-y-2 pt-1 border-t border-purple-500/20">
+        <!-- Dynamic User Request Items -->
+      </div>
+    </section>
+
+    <section class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-clipboard-list text-red-500"></i> Local Incident Feed
+        </h2>
+        <span id="incident-count" class="text-[11px] font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+          0 Reports
+        </span>
+      </div>
+
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+        <input type="text" id="search-input" onkeyup="filterIncidents()" placeholder="Search title, location, description..." class="w-full bg-tactical-900 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-slate-600 shadow-inner" />
+      </div>
+
+      <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+        <button id="cat-all" onclick="filterCategory('All')" class="cat-filter-btn px-3 py-1 rounded-lg text-xs font-medium bg-slate-700 text-white border border-slate-600 shadow-sm transition">
+          All Types
+        </button>
+        <button id="cat-security" onclick="filterCategory('Security')" class="cat-filter-btn px-3 py-1 rounded-lg text-xs font-medium bg-tactical-900 text-slate-300 border border-slate-800 hover:bg-slate-800 transition">
+          Security / Threat
+        </button>
+        <button id="cat-medical" onclick="filterCategory('Medical')" class="cat-filter-btn px-3 py-1 rounded-lg text-xs font-medium bg-tactical-900 text-slate-300 border border-slate-800 hover:bg-slate-800 transition">
+          Medical
+        </button>
+        <button id="cat-suspicious" onclick="filterCategory('Suspicious Activity')" class="cat-filter-btn px-3 py-1 rounded-lg text-xs font-medium bg-tactical-900 text-slate-300 border border-slate-800 hover:bg-slate-800 transition">
+          Suspicious Activity
+        </button>
+      </div>
+    </section>
+
+    <div id="incidents-feed-container" class="space-y-3">
+      <!-- Dynamic Incidents Rendered Here -->
+    </div>
+  </main>
+
+  <div class="fixed bottom-4 right-4 z-40">
+    <button onclick="openNewReportModal()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-full shadow-2xl flex items-center space-x-2 font-bold text-xs border border-red-400/40 transition-all active:scale-95">
+      <i class="fa-solid fa-plus text-sm"></i>
+      <span>Log Incident Report</span>
+    </button>
+  </div>
+
+  <div id="admin-users-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-tactical-900 border border-purple-500/30 rounded-xl w-full max-w-lg overflow-hidden shadow-2xl my-auto">
+      <div class="flex items-center justify-between px-4 py-3 bg-tactical-950 border-b border-slate-800">
+        <h3 class="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-users-gear text-purple-400"></i> User Accounts Management
+        </h3>
+        <button onclick="closeAdminUsersModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-4 space-y-4">
+        <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+          <span class="text-xs text-slate-300 font-medium">System Users List</span>
+          <button onclick="openAdminAddUserSubModal()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition flex items-center space-x-1 shadow-md">
+            <i class="fa-solid fa-user-plus text-[10px]"></i>
+            <span>Add New User</span>
+          </button>
+        </div>
+
+        <div id="admin-all-users-list" class="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+          <!-- Dynamic User Rows -->
+        </div>
+
+        <div class="pt-2 border-t border-slate-800/80 text-right">
+          <button onclick="closeAdminUsersModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-1.5 rounded-lg text-xs font-semibold">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-add-user-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-tactical-900 border border-slate-800 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl my-auto">
+      <div class="flex items-center justify-between px-4 py-3 bg-tactical-950 border-b border-slate-800">
+        <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-user-plus text-purple-400"></i> Create User Account
+        </h3>
+        <button onclick="closeAdminAddUserSubModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleAdminCreateUser(event)" class="p-4 space-y-3">
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Username *</label>
+          <input type="text" id="admin-new-username" required placeholder="john_doe" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Full Name *</label>
+          <input type="text" id="admin-new-fullname" required placeholder="John Doe" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Email Address *</label>
+          <input type="email" id="admin-new-email" required placeholder="john@churchsecurity.org" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Password *</label>
+          <input type="password" id="admin-new-password" required placeholder="••••••••" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Church / Organization *</label>
+          <input type="text" id="admin-new-church" required placeholder="Abilene Baptist Church" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Role Type *</label>
+            <select id="admin-new-role" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+              <option value="User">Standard User</option>
+              <option value="Admin">Administrator</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Requested Designation</label>
+            <input type="text" id="admin-new-reqrole" placeholder="Security Team" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
+          </div>
+        </div>
+
+        <div class="pt-2 flex space-x-2">
+          <button type="button" onclick="closeAdminAddUserSubModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+          <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg text-xs font-semibold shadow-md">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="admin-change-pass-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-3">
+    <div class="bg-tactical-900 border border-slate-800 rounded-xl w-full max-w-xs overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 bg-tactical-950 border-b border-slate-800">
+        <h3 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-key text-amber-400"></i> Change User Password
+        </h3>
+        <button onclick="closeAdminChangePassModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleAdminChangePassword(event)" class="p-4 space-y-3">
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">User Account</label>
+          <div id="change-pass-user-label" class="text-xs font-bold text-white bg-slate-950 px-3 py-2 rounded border border-slate-800"></div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">New Password *</label>
+          <input type="password" id="admin-target-newpass" required placeholder="Enter new password" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" />
+        </div>
+
+        <div class="pt-1 flex space-x-2">
+          <button type="button" onclick="closeAdminChangePassModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+          <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2 rounded-lg text-xs font-semibold shadow-md">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="report-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-tactical-900 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl my-auto">
+      <div class="flex items-center justify-between px-4 py-3 bg-tactical-950 border-b border-slate-800">
+        <h3 id="modal-title-text" class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-file-circle-plus text-red-500"></i> Log New Incident Report
+        </h3>
+        <button onclick="closeNewReportModal()" class="text-slate-400 hover:text-white text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="incident-form" onsubmit="submitNewIncident(event)" class="p-4 space-y-3">
+        <div class="bg-slate-800/80 border border-slate-700/80 rounded-lg p-2 flex items-center justify-between text-xs text-slate-300">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-user-check text-emerald-400"></i>
+            <span>Reporting Officer:</span>
+          </div>
+          <span id="auto-reporter-tag" class="font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-700">John Doe (Security Team)</span>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Incident Title *</label>
+          <input type="text" id="inc-title" required placeholder="e.g. Suspicious Vehicle in Rear Lot" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Category *</label>
+            <select id="inc-category" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500">
+              <option value="Security">Security / Threat</option>
+              <option value="Medical">Medical Incident</option>
+              <option value="Suspicious Activity">Suspicious Activity</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Warning Level *</label>
+            <select id="inc-level" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500">
+              <option value="Low">Low (Green)</option>
+              <option value="Medium" selected>Medium (Yellow)</option>
+              <option value="High">High (Orange)</option>
+              <option value="Critical">Critical (Red)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Church Location *</label>
+            <select id="inc-church" required class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500">
+              <option value="Abilene Baptist Church - Martinez">Abilene Baptist Church - Martinez</option>
+              <option value="Abilene Baptist Church - Harlem">Abilene Baptist Church - Harlem</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Exact Property Location / Area *</label>
+            <input type="text" id="inc-property-location" required placeholder="e.g., East Parking Lot, Main Sanctuary North Entrance" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Detailed Description *</label>
+          <textarea id="inc-description" rows="3" required placeholder="Describe what happened, individuals involved, or response actions taken..." class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-medium text-slate-400 mb-1">Attach Photo or Video Documentation</label>
+          <input type="file" id="inc-image-input" accept="image/*,video/*" capture="environment" onchange="previewMedia(event)" class="block w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-300 hover:file:bg-slate-700" />
+          <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-camera mr-1 text-slate-400"></i> Tap to snap a photo/video directly or select from gallery</p>
+          
+          <div id="image-preview-container" class="mt-2 hidden">
+            <img id="image-preview" src="#" alt="Preview" class="h-28 w-auto rounded-md border border-slate-700 object-cover hidden" />
+            <video id="video-preview" controls class="h-40 w-full rounded-md border border-slate-700 object-cover hidden bg-black"></video>
+          </div>
+        </div>
+
+        <div class="pt-2 flex space-x-2">
+          <button type="button" onclick="closeNewReportModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+          <button type="submit" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-xs font-semibold shadow-md">Submit Incident</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3 overflow-y-auto">
+    <div class="bg-tactical-900 border border-slate-800 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl my-auto">
+      <div class="flex border-b border-slate-800 bg-tactical-950">
+        <button id="tab-login-btn" onclick="switchAuthTab('login')" class="flex-1 py-3 text-center text-xs font-bold border-b-2 border-red-500 text-white">
+          Sign In
+        </button>
+        <button id="tab-request-btn" onclick="switchAuthTab('request')" class="flex-1 py-3 text-center text-xs font-bold border-b-2 border-transparent text-slate-400">
+          Request Access
+        </button>
+      </div>
+
+      <div class="p-4">
+        <!-- Sign In Form -->
+        <form id="auth-login-form" onsubmit="handleLogin(event)" class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Username</label>
+            <input type="text" id="login-username" required placeholder="" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Password</label>
+            <input type="password" id="login-password" required placeholder="" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500" />
+          </div>
+          <!--<div class="text-[10px] text-slate-500">
+            Default Admin: <span class="font-mono text-slate-300">user</span> / <span class="font-mono text-slate-300">password</span>
+          </div> -->
+          <div class="pt-2 flex space-x-2">
+            <button type="button" onclick="toggleAuthModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+            <button type="submit" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-xs font-semibold shadow-md">Sign In</button>
+          </div>
+        </form>
+
+        <!-- Account Request Form -->
+        <form id="auth-request-form" onsubmit="handleAccountRequest(event)" class="space-y-3 hidden">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Full Name *</label>
+            <input type="text" id="req-fullname" required placeholder="Officer Jane Smith" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Username *</label>
+            <input type="text" id="req-username" required placeholder="janesmith" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Email *</label>
+            <input type="email" id="req-email" required placeholder="jane@churchsecurity.org" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Password *</label>
+            <input type="password" id="req-password" required placeholder="••••••••" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Church / Organization *</label>
+            <input type="text" id="req-church" required placeholder="Abilene Baptist Church" class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-400 mb-1">Role / Team Designation *</label>
+            <input type="text" id="req-role" required placeholder="Security Director, First Responder..." class="w-full bg-tactical-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <div class="pt-2 flex space-x-2">
+            <button type="button" onclick="toggleAuthModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+            <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-semibold shadow-md">Submit Request</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-tactical-900 border border-slate-800 rounded-xl w-full max-w-xs overflow-hidden shadow-2xl p-4 space-y-3 text-center">
+      <div class="w-10 h-10 rounded-full bg-red-600/20 border border-red-500/40 text-red-500 flex items-center justify-center mx-auto text-lg">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <h4 class="text-sm font-bold text-white">Delete Incident Report?</h4>
+        <p class="text-xs text-slate-400 mt-1">This action cannot be undone.</p>
+      </div>
+      <div class="flex space-x-2 pt-1">
+        <button onclick="closeDeleteModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-semibold">Cancel</button>
+        <button onclick="confirmDeleteIncident()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-xs font-semibold shadow-md">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox Modal for Full Image View -->
+  <div id="image-lightbox" class="fixed inset-0 z-50 bg-black/90 hidden flex items-center justify-center p-4 cursor-pointer" onclick="closeLightbox()">
+    <div class="max-w-2xl w-full">
+      <img id="lightbox-img" src="" class="w-full h-auto max-h-[80vh] object-contain rounded-lg border border-slate-800" />
+      <p class="text-center text-xs text-slate-400 mt-2">Tap anywhere to close</p>
+    </div>
+  </div>
+
+  <!-- Toast Notification Bar -->
+  <div id="toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-600 text-white text-xs px-4 py-2 rounded-full shadow-lg transition-all opacity-0 pointer-events-none flex items-center space-x-1.5">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toast-msg">Action completed</span>
+  </div>
+
+  <script>
+    const API_BASE = (window.location.protocol.startsWith('http')) 
+      ? window.location.origin 
+      : "http://localhost:8000";
+    
+    let authToken = localStorage.getItem("church_security_token") || null;
+    let currentUser = {
+      id: null,
+      username: "Guest",
+      name: "Sign In",
+      role: "User",
+      church_org: "General Public",
+      team: "Security Team"
+    };
+
+    let rssFeedData = [];
+    let pendingAccountRequests = [];
+    let incidents = [];
+
+    let currentCategoryFilter = "All";
+    let currentRssFilter = "all";
+    let pendingUploadedFile = null;
+    let isRssMinimized = false;
+    let editingIncidentId = null;
+    let pendingDeleteIncidentId = null;
+    let targetPasswordUserId = null;
+
+    window.onload = async function() {
+      if (authToken) {
+        await fetchProfile();
+      }
+      await refreshRssFeed();
+      await renderIncidents();
+      updateRoleUI();
+    };
+
+    async function fetchProfile() {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          const user = await res.json();
+          currentUser = {
+            id: user.id,
+            username: user.username,
+            name: user.full_name,
+            role: user.role,
+            church_org: user.church_org,
+            team: user.requested_role || "Security Team"
+          };
+        } else {
+          localStorage.removeItem("church_security_token");
+          authToken = null;
+        }
+      } catch (err) {
+        console.warn("Error fetching profile:", err);
+      }
+    }
+
+    function updateRoleUI() {
+      const userNameEl = document.getElementById('header-user-name');
+      const logoutBtn = document.getElementById('logout-btn');
+      const statusDot = document.getElementById('user-status-dot');
+
+      if (userNameEl) userNameEl.innerText = currentUser.name || currentUser.username || "Guest";
+
+      if (authToken) {
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+        if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+      } else {
+        if (logoutBtn) logoutBtn.classList.add('hidden');
+        if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-slate-500";
+      }
+
+      const reporterTagEl = document.getElementById('auto-reporter-tag');
+      if (reporterTagEl) reporterTagEl.innerText = `${currentUser.name} (${currentUser.team || 'Security Team'})`;
+
+      const adminPanel = document.getElementById('admin-approval-panel');
+      if (adminPanel) {
+        if (currentUser.role === 'Admin') {
+          adminPanel.classList.remove('hidden');
+          renderAdminPanel();
+        } else {
+          adminPanel.classList.add('hidden');
+        }
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem("church_security_token");
+      authToken = null;
+      currentUser = {
+        id: null,
+        username: "Guest",
+        name: "Guest User",
+        role: "User",
+        church_org: "General Public",
+        team: "Security Team"
+      };
+      updateRoleUI();
+      renderIncidents();
+      showToast("Signed out successfully");
+      toggleAuthModal();
+    }
+
+    async function renderAdminPanel() {
+      const listContainer = document.getElementById('pending-users-list');
+      const badge = document.getElementById('pending-count-badge');
+      if (!listContainer) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/pending-users`, {
+          headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {}
+        });
+        if (res.ok) {
+          pendingAccountRequests = await res.json();
+        }
+      } catch (err) {
+        console.warn("Failed fetching pending users:", err);
+      }
+
+      if (badge) badge.innerText = `${pendingAccountRequests.length} Requests`;
+
+      listContainer.innerHTML = '';
+      if (pendingAccountRequests.length === 0) {
+        listContainer.innerHTML = `<div class="text-[11px] text-slate-400 italic py-1 text-center">No pending account requests at this time.</div>`;
+        return;
+      }
+
+      pendingAccountRequests.forEach(req => {
+        const div = document.createElement('div');
+        div.className = "bg-tactical-950 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between text-xs";
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-white">${req.full_name} (@${req.username})</div>
+            <div class="text-[10px] text-slate-400">${req.church_org} • <span class="text-purple-300 font-semibold">${req.requested_role}</span></div>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button onclick="approveUser(${req.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-semibold transition">Approve</button>
+            <button onclick="rejectUser(${req.id})" class="bg-red-600 hover:bg-red-500 text-white text-[10px] px-2 py-1 rounded font-semibold transition">Reject</button>
+          </div>
+        `;
+        listContainer.appendChild(div);
+      });
+    }
+
+    async function approveUser(userId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${userId}/approve`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          showToast("User account approved!");
+          await renderAdminPanel();
+        } else {
+          showToast("Failed to approve user");
+        }
+      } catch (err) {
+        showToast("Error connecting to server");
+      }
+    }
+
+    async function rejectUser(userId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${userId}/reject`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          showToast("Account request rejected");
+          await renderAdminPanel();
+        } else {
+          showToast("Failed to reject request");
+        }
+      } catch (err) {
+        showToast("Error connecting to server");
+      }
+    }
+
+    async function openAdminUsersModal() {
+      document.getElementById('admin-users-modal').classList.remove('hidden');
+      await loadAdminUsersList();
+    }
+
+    function closeAdminUsersModal() {
+      document.getElementById('admin-users-modal').classList.add('hidden');
+    }
+
+    async function loadAdminUsersList() {
+      const container = document.getElementById('admin-all-users-list');
+      if (!container) return;
+      container.innerHTML = '<div class="text-xs text-slate-400 text-center py-2"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Loading accounts...</div>';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          const users = await res.json();
+          container.innerHTML = '';
+
+          if (users.length === 0) {
+            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-3">No users found in database.</div>`;
+            return;
+          }
+
+          users.forEach(u => {
+            const row = document.createElement('div');
+            row.className = "bg-tactical-950 p-2.5 rounded-lg border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs";
+            
+            const roleBadge = u.role === 'Admin' 
+              ? `<span class="bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>` 
+              : `<span class="bg-slate-800 text-slate-300 border border-slate-700 text-[9px] px-1.5 py-0.5 rounded font-bold">User</span>`;
+
+            const statusTag = u.is_approved 
+              ? `<span class="text-emerald-400 text-[10px]"><i class="fa-solid fa-circle-check"></i> Active</span>` 
+              : `<span class="text-amber-400 text-[10px]"><i class="fa-solid fa-clock"></i> Pending</span>`;
+
+            row.innerHTML = `
+              <div>
+                <div class="flex items-center space-x-1.5 font-bold text-white">
+                  <span>${u.full_name}</span>
+                  <span class="text-slate-400 font-normal">(@${u.username})</span>
+                  ${roleBadge}
+                  ${statusTag}
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5">${u.email} • ${u.church_org}</div>
+              </div>
+              <div class="flex items-center space-x-1.5 self-end sm:self-auto">
+                <button onclick="promptAdminChangePassword(${u.id}, '${u.username}')" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-[10px] font-semibold transition" title="Change Password">
+                  <i class="fa-solid fa-key mr-1"></i> Pass
+                </button>
+                ${u.id !== currentUser.id ? `
+                  <button onclick="deleteUserByAdmin(${u.id}, '${u.username}')" class="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 px-2 py-1 rounded text-[10px] font-semibold transition" title="Delete User">
+                    <i class="fa-solid fa-trash mr-1"></i> Delete
+                  </button>
+                ` : ''}
+              </div>
+            `;
+            container.appendChild(row);
+          });
+        } else {
+          showToast("Failed to fetch user accounts");
+        }
+      } catch (err) {
+        showToast("Error loading user accounts");
+      }
+    }
+
+    function openAdminAddUserSubModal() {
+      document.getElementById('admin-add-user-modal').classList.remove('hidden');
+    }
+
+    function closeAdminAddUserSubModal() {
+      document.getElementById('admin-add-user-modal').classList.add('hidden');
+    }
+
+    async function handleAdminCreateUser(e) {
+      e.preventDefault();
+      const payload = {
+        username: document.getElementById('admin-new-username').value,
+        full_name: document.getElementById('admin-new-fullname').value,
+        email: document.getElementById('admin-new-email').value,
+        password: document.getElementById('admin-new-password').value,
+        church_org: document.getElementById('admin-new-church').value,
+        role: document.getElementById('admin-new-role').value,
+        requested_role: document.getElementById('admin-new-reqrole').value || "Security Team Member"
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          closeAdminAddUserSubModal();
+          showToast("New user account created successfully!");
+          await loadAdminUsersList();
+          await renderAdminPanel();
+        } else {
+          const err = await res.json();
+          showToast(err.detail || "Failed creating user");
+        }
+      } catch (err) {
+        showToast("Error connecting to server");
+      }
+    }
+
+    function promptAdminChangePassword(userId, username) {
+      targetPasswordUserId = userId;
+      document.getElementById('change-pass-user-label').innerText = `@${username}`;
+      document.getElementById('admin-target-newpass').value = '';
+      document.getElementById('admin-change-pass-modal').classList.remove('hidden');
+    }
+
+    function closeAdminChangePassModal() {
+      targetPasswordUserId = null;
+      document.getElementById('admin-change-pass-modal').classList.add('hidden');
+    }
+
+    async function handleAdminChangePassword(e) {
+      e.preventDefault();
+      if (!targetPasswordUserId) return;
+
+      const newPass = document.getElementById('admin-target-newpass').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${targetPasswordUserId}/password`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ new_password: newPass })
+        });
+
+        if (res.ok) {
+          closeAdminChangePassModal();
+          showToast("Password updated successfully!");
+        } else {
+          const err = await res.json();
+          showToast(err.detail || "Failed resetting password");
+        }
+      } catch (err) {
+        showToast("Error updating password");
+      }
+    }
+
+    async function deleteUserByAdmin(userId, username) {
+      if (!confirm(`Are you sure you want to delete user @${username}?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+
+        if (res.ok) {
+          showToast(`User @${username} deleted.`);
+          await loadAdminUsersList();
+          await renderAdminPanel();
+        } else {
+          const err = await res.json();
+          showToast(err.detail || "Failed to delete user");
+        }
+      } catch (err) {
+        showToast("Error connecting to server");
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('login-username').value;
+      const p = document.getElementById('login-password').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: u, password: p })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          authToken = data.access_token;
+          localStorage.setItem("church_security_token", authToken);
+          currentUser = {
+            id: data.user.id,
+            username: data.user.username,
+            name: data.user.full_name,
+            role: data.user.role,
+            church_org: data.user.church_org,
+            team: "Security Team"
+          };
+          updateRoleUI();
+          renderIncidents();
+          toggleAuthModal();
+          showToast(`Welcome back, ${currentUser.name}`);
+        } else {
+          const errData = await res.json();
+          showToast(errData.detail || "Login failed");
+        }
+      } catch (err) {
+        showToast("Error connecting to server");
+      }
+    }
+
+    async function handleAccountRequest(e) {
+      e.preventDefault();
+      const payload = {
+        username: document.getElementById('req-username').value,
+        full_name: document.getElementById('req-fullname').value,
+        email: document.getElementById('req-email').value,
+        password: document.getElementById('req-password').value,
+        church_org: document.getElementById('req-church').value,
+        requested_role: document.getElementById('req-role').value
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          toggleAuthModal();
+          showToast("Account request submitted! Pending Admin approval.");
+        } else {
+          const errData = await res.json();
+          showToast(errData.detail || "Registration request failed");
+        }
+      } catch (err) {
+        showToast("Error connecting to server");
+      }
+    }
+
+    async function refreshRssFeed(event) {
+      if (event) event.stopPropagation();
+      const refreshBtn = document.getElementById('rss-refresh-btn');
+      const refreshIcon = document.getElementById('rss-refresh-icon');
+      const syncStatus = document.getElementById('rss-sync-status');
+      
+      if (refreshBtn) refreshBtn.disabled = true;
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+      try {
+        let stateParam = currentRssFilter !== 'all' ? `?state=${currentRssFilter}` : '';
+        const res = await fetch(`${API_BASE}/api/rss${stateParam}`);
+        if (res.ok) {
+          rssFeedData = await res.json();
+        }
+      } catch (err) {
+        console.warn("Unable to sync backend RSS feed:", err);
+      }
+
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (syncStatus) syncStatus.innerText = `Synced at ${nowStr}`;
+
+      setTimeout(() => {
+        if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+        if (refreshBtn) refreshBtn.disabled = false;
+        renderRssFeed();
+        if (event) showToast("Threat Intel Feed refreshed");
+      }, 400);
+    }
+
+    function renderRssFeed() {
+      const container = document.getElementById('rss-feed-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const filtered = rssFeedData.filter(item => {
+        if (currentRssFilter === 'all') return true;
+        return item.state === currentRssFilter;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-slate-400 text-xs text-center py-4">No threat intelligence alerts found for this filter.</div>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "bg-tactical-950 p-2.5 rounded-lg border border-slate-800 hover:border-slate-700 transition";
+        div.innerHTML = `
+          <div class="flex items-center justify-between gap-1 text-[10px] text-slate-400 mb-1">
+            <span class="bg-slate-800 text-slate-300 font-semibold px-1.5 py-0.5 rounded border border-slate-700">${item.state}</span>
+            <span class="flex items-center gap-1"><i class="fa-regular fa-clock text-[9px]"></i> ${item.pub_date_str}</span>
+          </div>
+          <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-slate-100 hover:text-blue-400 leading-snug transition flex items-start justify-between gap-1 group">
+            <span>${item.title}</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-500 group-hover:text-blue-400 transition mt-0.5 flex-shrink-0"></i>
+          </a>
+          <p class="text-[11px] text-slate-400 mt-1 line-clamp-2">${item.summary}</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function renderIncidents() {
+      const container = document.getElementById('incidents-feed-container');
+      const searchVal = document.getElementById('search-input').value;
+      container.innerHTML = '';
+
+      try {
+        let url = `${API_BASE}/api/incidents?`;
+        if (currentCategoryFilter !== 'All') url += `category=${encodeURIComponent(currentCategoryFilter)}&`;
+        if (searchVal) url += `search=${encodeURIComponent(searchVal)}`;
+
+        const headers = authToken ? { "Authorization": `Bearer ${authToken}` } : {};
+        const res = await fetch(url, { headers });
+
+        if (res.ok) {
+          incidents = await res.json();
+        }
+      } catch (err) {
+        console.warn("Failed fetching incidents from API:", err);
+      }
+
+      document.getElementById('incident-count').innerText = `${incidents.length} Reports`;
+
+      if (incidents.length === 0) {
+        container.innerHTML = `
+          <div class="bg-tactical-900 border border-slate-800 rounded-xl p-6 text-center text-slate-400 text-xs">
+            <i class="fa-solid fa-folder-open text-2xl text-slate-600 mb-2"></i>
+            <p>No incidents match your current search/filter criteria.</p>
+          </div>
+        `;
+        return;
+      }
+
+      incidents.forEach(inc => {
+        const canManage = (currentUser.role === 'Admin') || (inc.author_id === currentUser.id);
+
+        const card = document.createElement('article');
+        card.className = "bg-tactical-900 border border-slate-800 rounded-xl p-3.5 shadow-lg space-y-2.5 relative";
+        
+        const fullImgUrl = inc.image_url 
+          ? (inc.image_url.startsWith("http") ? inc.image_url : `${API_BASE}${inc.image_url}`)
+          : null;
+
+        const isVideo = isVideoFile(fullImgUrl, inc.media_type);
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${getLevelBadgeClass(inc.level)} uppercase tracking-wider mb-1">
+                ${inc.level} Level
+              </span>
+              <h3 class="text-sm font-bold text-white leading-snug">${inc.title}</h3>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 whitespace-nowrap">
+              ${inc.category}
+            </span>
+          </div>
+
+          <div class="space-y-1 text-[11px] text-slate-400 border-b border-slate-800/60 pb-2">
+            <div class="flex items-center gap-1.5 text-slate-200 font-medium">
+              <i class="fa-solid fa-church text-amber-500"></i>
+              <span>${inc.church_name}</span>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-1 text-[10px]">
+              <span class="flex items-center gap-1 text-red-400 font-semibold bg-red-950/30 border border-red-800/40 px-2 py-0.5 rounded">
+                <i class="fa-solid fa-location-crosshairs"></i> Location: ${inc.exact_location || "General Grounds"}
+              </span>
+              <span class="flex items-center gap-1 text-slate-400">
+                <i class="fa-regular fa-clock"></i> ${new Date(inc.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+              </span>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed">${inc.description}</p>
+
+          ${fullImgUrl ? (
+            isVideo ? `
+              <div class="pt-1">
+                <video src="${fullImgUrl}" controls preload="metadata" class="max-h-52 w-full object-cover rounded-lg border border-slate-800 bg-black"></video>
+              </div>
+            ` : `
+              <div class="pt-1">
+                <img src="${fullImgUrl}" onclick="openLightbox('${fullImgUrl}')" alt="Incident Photo" class="h-28 w-full object-cover rounded-lg border border-slate-800 cursor-pointer hover:opacity-90 transition" />
+              </div>
+            `
+          ) : ''}
+
+          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span class="text-[10px] flex items-center gap-1 text-slate-300">
+              <i class="fa-solid fa-user-shield text-emerald-400"></i> Logged by: <strong>${inc.reporter_name}</strong>
+            </span>
+            
+            ${canManage ? `
+              <div class="flex items-center space-x-2">
+                <button onclick="editIncident(${inc.id})" class="text-slate-400 hover:text-blue-400 transition text-[11px]">
+                  <i class="fa-solid fa-pen mr-0.5"></i> Edit
+                </button>
+                <button onclick="promptDeleteIncident(${inc.id})" class="text-slate-400 hover:text-red-400 transition text-[11px]">
+                  <i class="fa-solid fa-trash mr-0.5"></i> Delete
+                </button>
+              </div>
+            ` : `<span class="text-[9px] text-slate-600 italic">Read-only</span>`}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function submitNewIncident(e) {
+      e.preventDefault();
+
+      let imageUrl = null;
+      let mediaType = "image";
+
+      if (pendingUploadedFile) {
+        const formData = new FormData();
+        formData.append("file", pendingUploadedFile);
+        try {
+          const uploadRes = await fetch(`${API_BASE}/api/upload`, {
+            method: "POST",
+            headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            imageUrl = uploadData.image_url;
+            mediaType = uploadData.media_type || (pendingUploadedFile.type.startsWith('video/') ? 'video' : 'image');
+          } else {
+            const uploadErr = await uploadRes.json();
+            showToast(uploadErr.detail || "Media upload failed");
+            return;
+          }
+        } catch (err) {
+          console.warn("Media upload failed:", err);
+          showToast("Network error uploading media file");
+          return;
+        }
+      }
+
+      const payload = {
+        title: document.getElementById('inc-title').value,
+        category: document.getElementById('inc-category').value,
+        level: document.getElementById('inc-level').value,
+        church_name: document.getElementById('inc-church').value,
+        exact_location: document.getElementById('inc-property-location').value,
+        description: document.getElementById('inc-description').value,
+        image_url: imageUrl,
+        media_type: mediaType
+      };
+
+      try {
+        const url = editingIncidentId 
+          ? `${API_BASE}/api/incidents/${editingIncidentId}`
+          : `${API_BASE}/api/incidents`;
+        
+        const method = editingIncidentId ? "PUT" : "POST";
+
+        const res = await fetch(url, {
+          method: method,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${authToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const msg = editingIncidentId ? "Incident report updated!" : "New incident report logged successfully!";
+          closeNewReportModal();
+          await renderIncidents();
+          showToast(msg);
+        } else {
+          const errData = await res.json();
+          showToast(errData.detail || "Failed submitting report");
+        }
+      } catch (err) {
+        console.error("Error submitting incident report:", err);
+        showToast("Error saving report to server: " + (err.message || "Network request failed"));
+      }
+    }
+
+    function editIncident(incidentId) {
+      const inc = incidents.find(item => item.id === incidentId);
+      if (!inc) return;
+
+      editingIncidentId = incidentId;
+      document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-pen-to-square text-blue-400"></i> Edit Incident Report`;
+      document.getElementById('inc-title').value = inc.title;
+      document.getElementById('inc-category').value = inc.category;
+      document.getElementById('inc-level').value = inc.level;
+      document.getElementById('inc-church').value = inc.church_name;
+      document.getElementById('inc-property-location').value = inc.exact_location || '';
+      document.getElementById('inc-description').value = inc.description;
+
+      openNewReportModal();
+    }
+
+    function promptDeleteIncident(incidentId) {
+      pendingDeleteIncidentId = incidentId;
+      document.getElementById('delete-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteIncidentId = null;
+      document.getElementById('delete-modal').classList.add('hidden');
+    }
+
+    async function confirmDeleteIncident() {
+      if (!pendingDeleteIncidentId) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/incidents/${pendingDeleteIncidentId}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          closeDeleteModal();
+          showToast("Incident report deleted");
+          await renderIncidents();
+        } else {
+          const err = await res.json();
+          showToast(err.detail || "Delete failed");
+        }
+      } catch (err) {
+        showToast("Error deleting incident report");
+      }
+    }
+
+    function previewMedia(event) {
+      const input = event.target;
+      const previewContainer = document.getElementById('image-preview-container');
+      const imgPreview = document.getElementById('image-preview');
+      const videoPreview = document.getElementById('video-preview');
+
+      if (input.files && input.files[0]) {
+        pendingUploadedFile = input.files[0];
+        const file = input.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+          previewContainer.classList.remove('hidden');
+          if (file.type.startsWith('video/')) {
+            if (imgPreview) imgPreview.classList.add('hidden');
+            if (videoPreview) {
+              videoPreview.src = e.target.result;
+              videoPreview.classList.remove('hidden');
+            }
+          } else {
+            if (videoPreview) videoPreview.classList.add('hidden');
+            if (imgPreview) {
+              imgPreview.src = e.target.result;
+              imgPreview.classList.remove('hidden');
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function isVideoFile(url, mediaType) {
+      if (mediaType === 'video') return true;
+      if (!url) return false;
+      const cleanUrl = url.split('?')[0].toLowerCase();
+      return cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.avi') || cleanUrl.endsWith('.m4v') || cleanUrl.endsWith('.3gp') || cleanUrl.endsWith('.mkv');
+    }
+
+    function closeNewReportModal() {
+      document.getElementById('report-modal').classList.add('hidden');
+      document.body.classList.remove('no-scroll');
+      document.getElementById('incident-form').reset();
+      
+      const container = document.getElementById('image-preview-container');
+      const imgPreview = document.getElementById('image-preview');
+      const videoPreview = document.getElementById('video-preview');
+      if (container) container.classList.add('hidden');
+      if (imgPreview) { imgPreview.src = '#'; imgPreview.classList.add('hidden'); }
+      if (videoPreview) { videoPreview.src = ''; videoPreview.classList.add('hidden'); }
+      
+      pendingUploadedFile = null;
+      editingIncidentId = null;
+      document.getElementById('modal-title-text').innerHTML = `<i class="fa-solid fa-file-circle-plus text-red-500"></i> Log New Incident Report`;
+    }
+
+    function toggleRssFeed() {
+      isRssMinimized = !isRssMinimized;
+      const body = document.getElementById('rss-feed-body');
+      const icon = document.getElementById('rss-toggle-icon');
+      const countPill = document.getElementById('rss-count-pill');
+
+      if (isRssMinimized) {
+        body.classList.add('hidden');
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+        if (countPill) {
+          countPill.innerText = `${rssFeedData.length} items`;
+          countPill.classList.remove('hidden');
+        }
+      } else {
+        body.classList.remove('hidden');
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+        if (countPill) {
+          countPill.classList.add('hidden');
+        }
+      }
+    }
+
+    function filterRss(filter) {
+      currentRssFilter = filter;
+      const buttons = {
+        'all': 'rss-filter-all',
+        'GA': 'rss-filter-ga',
+        'SC': 'rss-filter-sc'
+      };
+
+      Object.keys(buttons).forEach(key => {
+        const btn = document.getElementById(buttons[key]);
+        if (!btn) return;
+        if (key === filter) {
+          btn.className = "rss-filter-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-600 text-white shadow-sm transition";
+        } else {
+          btn.className = "rss-filter-btn px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition";
+        }
+      });
+
+      refreshRssFeed();
+    }
+
+    function filterCategory(category) {
+      currentCategoryFilter = category;
+      const catMap = {
+        'All': 'cat-all',
+        'Security': 'cat-security',
+        'Medical': 'cat-medical',
+        'Suspicious Activity': 'cat-suspicious'
+      };
+
+      Object.keys(catMap).forEach(cat => {
+        const btn = document.getElementById(catMap[cat]);
+        if (!btn) return;
+        if (cat === category) {
+          btn.className = "cat-filter-btn px-3 py-1 rounded-lg text-xs font-medium bg-slate-700 text-white border border-slate-600 shadow-sm transition";
+        } else {
+          btn.className = "cat-filter-btn px-3 py-1 rounded-lg text-xs font-medium bg-tactical-900 text-slate-300 border border-slate-800 hover:bg-slate-800 transition";
+        }
+      });
+
+      renderIncidents();
+    }
+
+    function filterIncidents() {
+      renderIncidents();
+    }
+
+    function getLevelBadgeClass(level) {
+      switch (level) {
+        case 'Critical':
+          return 'bg-red-500/20 text-red-400 border-red-500/40';
+        case 'High':
+          return 'bg-orange-500/20 text-orange-400 border-orange-500/40';
+        case 'Medium':
+          return 'bg-amber-500/20 text-amber-400 border-amber-500/40';
+        case 'Low':
+        default:
+          return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40';
+      }
+    }
+
+    function openNewReportModal() {
+      document.getElementById('report-modal').classList.remove('hidden');
+      document.body.classList.add('no-scroll');
+      updateRoleUI();
+    }
+
+    function toggleAuthModal() {
+      const modal = document.getElementById('auth-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('auth-login-form');
+      const reqForm = document.getElementById('auth-request-form');
+      const loginTabBtn = document.getElementById('tab-login-btn');
+      const reqTabBtn = document.getElementById('tab-request-btn');
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        reqForm.classList.add('hidden');
+        loginTabBtn.className = "flex-1 py-3 text-center text-xs font-bold border-b-2 border-red-500 text-white";
+        reqTabBtn.className = "flex-1 py-3 text-center text-xs font-bold border-b-2 border-transparent text-slate-400";
+      } else {
+        loginForm.classList.add('hidden');
+        reqForm.classList.remove('hidden');
+        reqTabBtn.className = "flex-1 py-3 text-center text-xs font-bold border-b-2 border-blue-500 text-white";
+        loginTabBtn.className = "flex-1 py-3 text-center text-xs font-bold border-b-2 border-transparent text-slate-400";
+      }
+    }
+
+    function openLightbox(imgUrl) {
+      document.getElementById('lightbox-img').src = imgUrl;
+      document.getElementById('image-lightbox').classList.remove('hidden');
+    }
+
+    function closeLightbox() {
+      document.getElementById('image-lightbox').classList.add('hidden');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
