@@ -1,1 +1,4 @@
-pip install fastapi uvicorn sqlalchemy pydantic
+fastapi
+uvicorn 
+sqlalchemy 
+pydantic
